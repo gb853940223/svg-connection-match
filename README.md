@@ -1,1 +1,2 @@
-# svg-connection-match
+# 使用svg
+# 开发的左右连线匹配功能

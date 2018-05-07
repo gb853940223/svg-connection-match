@@ -1,0 +1,40 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+
+.main {
+    margin: 0 auto;
+    width: 50%;
+    height: 800px;
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+}
+
+.main .main-left,
+.main .main-right {
+    width: 200px;
+    background-color: #f1f1f1;
+    /* padding: 10px; */
+}
+
+.main .main-left .item,
+.main .main-right .item {
+    background-color: #999;
+    border: 1px solid #fff;
+    height: 50px;
+    cursor: pointer;
+}
+
+.main svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+.main .path-item:hover {
+    stroke-width: 4;
+    stroke: #818181;
+}

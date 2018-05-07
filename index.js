@@ -1,0 +1,195 @@
+var Line = {
+  init: function(container){
+    this.drawPathFlag = false;
+    //设置左右两侧区块的宽高
+    this.initUnit(container);
+    //初始化SVG画布
+    this.initSVG(container);
+    //初始化path
+    this.initPath();
+    //重绘path
+    this.drawPath();
+    //path鼠标右键事件
+    this.pathContextMenu();
+  },
+  initUnit: function(container){
+    container = typeof container === 'string' ? document.querySelector(container) : container;
+    this.width = container.clientWidth;
+    this.height = container.clientHeight;
+    this.widthItem = 200;
+    this.heightItem = 52;
+    this.space = this.width - this.widthItem * 2;
+  },
+  initSVG: function(container){
+    container = typeof container === 'string' ? document.querySelector(container) : container;
+    this.scale = 1;
+    this.svg = SVG(container).size(this.width,this.height);
+    this.svg.viewbox(0, 0, this.width,this.height);
+    this.surface = this.svg
+        .group()
+        .width(100)
+        .height(100)
+        .addClass('surface')
+        .viewbox(0, 0, 100, 100);
+  },
+  initPath: function(){
+    var path = this.surface.path(this._getPathStr(200,26,200 + this.space,26))
+    .addClass('path-item')
+    .attr({
+        'pointer-events': 'auto'
+    })
+    .fill('none')
+    .stroke({
+        color: '#818181',
+        width: 2,
+        linecap: 'round',
+        linejoin: 'round'
+    })
+    .marker('end', 8, 4, function(add) {
+        add.path("M0 0 L4 2 L0 4 L0 0");
+        this.fill('#818181')
+            .size(10,10)
+    })
+  },
+  drawPath: function(){
+    var _this = this;  
+    this.svg.on('mousedown',function(e){
+      e.preventDefault();
+      e.stopImmediatePropagation();  //remind me
+      if(path){
+        path = null;
+      }
+      var startPos = this._transfromCoordination(e.offsetX,e.offsetY);
+      //验证画线时，起点和终点不能超过指定区域
+      var pathRangeValidResult = _this.pathRangeValid();
+      if(startPos.x > _this.widthItem){
+        return;
+      } else if(startPos.y > pathRangeValidResult.leftH){
+        return;
+      }
+      var startPosY = (Math.floor(startPos.y/_this.heightItem))*(_this.heightItem) + _this.heightItem/2;
+      // var path = this.surface.path(this._getPathStr(startPos.x, startPos.y,startPos.x, startPos.y))
+      this.drawPathFlag = true;
+      var path = this.surface.path(this._getPathStr(_this.widthItem, startPosY,_this.widthItem, startPos.y))
+          .addClass('path-item')
+          .attr('pointer-events', 'none')
+          .fill('none')
+          .stroke({
+              color: '#818181',
+              width: 2,
+              linecap: 'round',
+              linejoin: 'round'
+          })
+          .marker('end', 8, 4, function(add) {
+              add.path("M0 0 L4 2 L0 4 L0 0");
+              this.fill('#818181')
+                  .size(10,10)
+          });
+      this.curPath = path;
+      var onMouseMove = function(e) {
+        if(this.drawPathFlag){
+          var movePos = this._transfromCoordination(e.offsetX,e.offsetY);
+          this.curPath.plot(this._getPathStr(_this.widthItem, startPosY, movePos.x, movePos.y));
+        }
+      };
+      this.svg.on('mousemove',onMouseMove,this);
+      
+      var onMouseUp = function(e){
+        this.svg.off('mousemove', onMouseMove);
+        if(this.drawPathFlag){
+          var path = this.curPath;
+          var endPos = this._transfromCoordination(e.offsetX,e.offsetY);
+          //验证画线时，起点和终点不能超过指定区域
+          var pathRangeValidResult = _this.pathRangeValid();
+          if(endPos.x < this.space + this.widthItem){
+            this.curPath.remove();
+          }else if(endPos.y > pathRangeValidResult.rightH){
+            this.curPath.remove();
+          }
+          var endPosX = _this.width -_this.widthItem;
+          var endPosY = (Math.floor(endPos.y/_this.heightItem))*(_this.heightItem) + _this.heightItem/2;;
+          // this.curPath.plot(this._getPathStr(_this.widthItem, startPosY, endPos.x, endPos.y));
+          if(endPos.x < endPosX){
+            this.curPath.remove();
+          }else {
+            this.curPath.plot(this._getPathStr(_this.widthItem, startPosY, endPosX, endPosY));
+            path.attr('pointer-events', 'auto');
+          }
+          var path_d = this.curPath.node.getAttribute('d');
+          var pathValidResult = _this.pathValid(path_d);
+          if(!pathValidResult){
+            this.curPath.remove();
+          }
+        }
+        this.drawPathFlag = false;
+        this.svg.off('mouseup',onMouseUp,this);
+      }
+      this.svg.on('mouseup',onMouseUp,this);
+    },this);
+  },
+  _getPathStr: function(x1, y1, x2, y2) {
+    var ratio = 0.5;
+    var cx1 = x1;
+    var offset = Math.sign(y1 - y2) * Math.max(Math.abs(y1 - y2), Math.abs(x1 - x2) * 0.5, 10) * ratio;
+    var cy1 = y1 - offset;
+    var cx2 = x2;
+    var cy2 = y2 + offset;
+    return "M" + x1 + " " + y1 + " " + x2 + " " + y2;
+  },
+  _transfromCoordination: function (x, y) {
+    return {
+        x: (x - this.surface.x()) / this.scale,
+        y: (y - this.surface.y()) / this.scale
+    }
+  },
+  pathContextMenu: function(){
+    this.svg.on('contextmenu',function(event){
+      event.stopPropagation();
+      event.preventDefault();
+      var isPath = event.target.tagName.toLowerCase() === 'path';
+      console.log(isPath);
+    });
+  },
+  //验证两端之前，只能有一条连线
+  pathValid: function(d){
+    var result = true;
+    var arrStart = [];
+    var arrEnd = [];
+    var paths = document.querySelectorAll('.path-item');
+    var pathsL = paths.length;
+    for(var i = 0; i < pathsL; i ++){
+      var self_d = paths[i].getAttribute('d');
+      var startP = self_d.split(' ')[1];
+      var endP = self_d.split(' ')[3];
+      if(arrStart.indexOf(startP) !== -1){
+        result = false;
+        break;
+      }else {
+        arrStart.push(startP);
+      }
+      if(arrEnd.indexOf(endP) !== -1){
+        result = false;
+        break;
+      }else {
+        arrEnd.push(endP);
+      }
+    }
+    return result;
+  },
+  //验证画线时，起点和终点不能超过指定区域
+  pathRangeValid: function(){
+    var obj = {};
+    var eleLeft = '.main .main-left .item';
+    var eleRight = '.main .main-right .item';
+    var mainLeft = document.querySelectorAll(eleLeft);
+    var mainRight = document.querySelectorAll(eleRight);
+    var mainLeftL = mainLeft.length;
+    var mainRightL = mainRight.length;
+    var mainLeftH = mainLeftL * this.heightItem;
+    var mainRightH = mainRightL * this.heightItem;
+    obj['leftH'] = mainLeftH;
+    obj['rightH'] = mainRightH;
+    return obj; 
+  }
+}
+Line.init('.main');
