@@ -1,6 +1,8 @@
 var Line = {
   init: function(container){
     this.drawPathFlag = false;
+    this.pathMenu = document.getElementById('path-menu');
+    this.hidePathMenu();
     //设置左右两侧区块的宽高
     this.initUnit(container);
     //初始化SVG画布
@@ -11,6 +13,8 @@ var Line = {
     this.drawPath();
     //path鼠标右键事件
     this.pathContextMenu();
+    //path鼠标右键菜单删除事件
+    this.pathMenuRemove();
   },
   initUnit: function(container){
     container = typeof container === 'string' ? document.querySelector(container) : container;
@@ -56,6 +60,7 @@ var Line = {
     this.svg.on('mousedown',function(e){
       e.preventDefault();
       e.stopImmediatePropagation();  //remind me
+      _this.hidePathMenu();
       if(path){
         path = null;
       }
@@ -143,12 +148,43 @@ var Line = {
     }
   },
   pathContextMenu: function(){
+    var _this = this;
     this.svg.on('contextmenu',function(event){
       event.stopPropagation();
       event.preventDefault();
+      _this.hidePathMenu();
       var isPath = event.target.tagName.toLowerCase() === 'path';
-      console.log(isPath);
+      if(isPath){
+        var x = event.clientX;
+        var y = event.clientY;
+        _this.showPathMenu(x,y);
+        _this.curPath = event.target;
+      }
     });
+  },
+  pathMenuRemove: function(){
+    !!this.pathMenu && this.pathMenu.addEventListener('click',this.removePath.bind(this),false);
+  },
+  hidePathMenu: function(){
+    this.pathMenu.classList.add('hide');
+  },
+  showPathMenu: function(x,y){
+    this.pathMenu.style.webkitTransform = " translate(" + x + "px," + y + "px)";
+    this.pathMenu.classList.remove('hide');
+  },
+  removePath: function(){
+    var _this = this;
+    var curPathId = _this.curPath.getAttribute('id');
+    var paths = document.querySelectorAll('.path-item');
+    var pathsL = paths.length;
+    _this.hidePathMenu();
+    for(var i = 0; i < pathsL; i ++){
+      var self_id = paths[i].getAttribute('id');
+      if(self_id === curPathId){
+        _this.curPath.remove();
+        break;
+      }
+    }
   },
   //验证两端之前，只能有一条连线
   pathValid: function(d){
