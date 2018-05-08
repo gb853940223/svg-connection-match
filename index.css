@@ -16,7 +16,6 @@
 .main .main-right {
     width: 200px;
     background-color: #f1f1f1;
-    /* padding: 10px; */
 }
 
 .main .main-left .item,
@@ -25,6 +24,8 @@
     border: 1px solid #fff;
     height: 50px;
     cursor: pointer;
+    color: #fff;
+    text-align: center;
 }
 
 .main svg {
